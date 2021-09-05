@@ -1,27 +1,92 @@
+require('dotenv').config()
 const express = require('express')
 const app = express()
+const cors = require('cors')
+const mongoose = require('mongoose')
 const bodyParser = require('body-parser')
 
-const cors = require('cors')
+const User = require('./model/user')
+const Exercise = require('./model/exercise')
 
-const mongoose = require('mongoose')
-mongoose.connect(process.env.MLAB_URI || 'mongodb://localhost/exercise-track' )
+mongoose.connect(process.env.MLAB_URI, { useNewUrlParser: true, useUnifiedTopology: true }).then(res => {
+  console.log('Connected to MongoDB')
+}).catch((err) => {
+  console.log('Error connecting to MongoDB: ', err.message)
+})
 
 app.use(cors())
 
-app.use(bodyParser.urlencoded({extended: false}))
-app.use(bodyParser.json())
-
+app.use(bodyParser.urlencoded({ extended: false }))
+//app.use(bodyParser.json())
 
 app.use(express.static('public'))
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/views/index.html')
-});
+})
 
+//Creating new user.
+//POST user's username
+//then return the username and id
+app.post('/api/users', (req, res) => {
+  let uname = req.body.username //get username from POST body (form)
+  User.create({ username: uname }, (err, data) => {
+    if (err) console.log(err)
+    res.json({ username: data.username, _id: data._id })
+  })
+})
+
+//GET username
+app.get('/api/users', (req, res) => {
+  User.find({}, (err, data) => {//find all username
+    if (err) console.log(err)
+    res.json(data)
+  })
+})
+
+//POST /api/user/:id/exercises
+//create new exercise
+app.post('/api/users/:id/exercises', (req, res) => {
+  let { description, duration, date } = req.body
+  let userid = req.params.id
+  //find user by id, return username
+  User.findById(userid).then(user => {
+    if (!user) { //user not found
+      throw new Error('Not found user with this id')
+    }
+    let username = user.username
+    Exercise.create({ userid, description, duration, date }, (err, data) => {
+      if (err) console.log(err)
+      //let date = new Date(data.date)
+      res.json({
+        username: username,
+        _id: data.userid,
+        description: data.description,
+        duration: data.duration,
+        date: data.date.toDateString()
+      })
+    })
+  }).catch((err) => {
+    console.log(err)
+    res.send(err.message)
+  })
+})
+
+//GET /api/users/:_id/logs?[from][&to][&limit]
+//get user's full exercise logs
+app.get('/api/users/:_id/logs', (req, res) => {
+  let id = req.params._id
+  User.findById(id).then(user => {
+    let username = user.username
+    Exercise.find({ userid: id }).then(log => {
+      console.log(log.length)
+      console.log(log)
+    })
+  })
+})
 
 // Not found middleware
 app.use((req, res, next) => {
-  return next({status: 404, message: 'not found'})
+  return next({ status: 404, message: 'not found' })
 })
 
 // Error Handling middleware

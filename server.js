@@ -75,12 +75,52 @@ app.post('/api/users/:id/exercises', (req, res) => {
 //get user's full exercise logs
 app.get('/api/users/:_id/logs', (req, res) => {
   let id = req.params._id
+  let { from, to, limit } = req.query //destructuring to get the query
+  if (from) {
+    from = new Date(from)
+  } else {
+    from = new Date(0)
+  }
+  if (to) {
+    to = new Date(to)
+  } else {
+    to = new Date() //make the date equal to now, so get query till current date
+  }
+  if (limit === '') {
+    limit = 0
+  }
+
   User.findById(id).then(user => {
     let username = user.username
-    Exercise.find({ userid: id }).then(log => {
-      console.log(log.length)
-      console.log(log)
-    })
+
+    Exercise.find({ userid: id })
+      .where('date').gte(from).lte(to)
+      .limit(+limit).exec()
+      .then(log => res.status(200).send({
+        _id: id,
+        username: username,
+        count: log.length,
+        log: log.map(exercise => ({
+          description: exercise.description,
+          duration: exercise.duration,
+          date: exercise.date.toDateString(),
+        }))
+      }))
+    /*
+    Exercise.find({ userid: id }).then(log => res.send({
+      log: log.map(exercise => ({
+        description: exercise.description,
+        duration: exercise.duration,
+        date: exercise.date.toDateString(),
+      })),
+      username: username,
+      count: log.length,
+      _id: id,
+    }))
+    */
+  }).catch(err => {
+    console.log(err)
+    res.status(500).send(err.message)
   })
 })
 

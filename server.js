@@ -86,7 +86,7 @@ app.get('/api/users/:_id/logs', (req, res) => {
   } else {
     to = new Date() //make the date equal to now, so get query till current date
   }
-  if (limit === '') {
+  if (limit === undefined) {
     limit = 0
   }
 
@@ -95,7 +95,7 @@ app.get('/api/users/:_id/logs', (req, res) => {
 
     Exercise.find({ userid: id })
       .where('date').gte(from).lte(to)
-      .limit(+limit).exec()
+      .limit(parseInt(limit)).exec()
       .then(log => res.status(200).send({
         _id: id,
         username: username,
@@ -103,7 +103,7 @@ app.get('/api/users/:_id/logs', (req, res) => {
         log: log.map(exercise => ({
           description: exercise.description,
           duration: exercise.duration,
-          date: exercise.date.toDateString(),
+          date: new Date(exercise.date).toDateString(),
         }))
       }))
     /*
